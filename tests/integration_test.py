@@ -4,10 +4,12 @@
 # Tests real-time order flow, position tracking, and performance metrics
 
 import asyncio
-import time
-from datetime import datetime
-import httpx
 import statistics
+import sys
+import time
+from datetime import UTC, datetime
+
+import httpx
 
 BASE_URL = "http://localhost:8000"
 # For testing, use a test token (backend should have test user endpoint)
@@ -77,8 +79,8 @@ async def test_health_check():
         assert data["status"] == "healthy"
         print(f"✓ Backend is healthy: {data}")
         return True
-    except Exception as e:
-        print(f"✗ Health check failed: {e}")
+    except (httpx.HTTPError, AssertionError, KeyError, ValueError) as error:
+        print(f"✗ Health check failed: {error}")
         return False
 
 
@@ -115,8 +117,8 @@ async def test_order_placement(metrics: PerformanceMetrics):
                 print(f"  Order {i+1}: Failed with status {response.status_code}")
                 metrics.record_failure()
 
-        except Exception as e:
-            print(f"  Order {i+1}: Error - {e}")
+        except (httpx.HTTPError, ValueError) as error:
+            print(f"  Order {i+1}: Error - {error}")
             metrics.record_failure()
 
     print(f"✓ Placed {success_count}/{order_requests} orders successfully")
@@ -143,8 +145,8 @@ async def test_position_tracking(metrics: PerformanceMetrics):
                     f"  - {pos.get('symbol')}: {pos.get('quantity')} @ ${pos.get('entry_price')}"
                 )
         return True
-    except Exception as e:
-        print(f"✗ Position tracking failed: {e}")
+    except (httpx.HTTPError, AssertionError, ValueError) as error:
+        print(f"✗ Position tracking failed: {error}")
         metrics.record_failure()
         return False
 
@@ -167,8 +169,8 @@ async def test_portfolio_summary(metrics: PerformanceMetrics):
         print(f"  - Realized P&L: ${summary.get('total_realized_pnl')}")
         print(f"  - Unrealized P&L: ${summary.get('total_unrealized_pnl')}")
         return True
-    except Exception as e:
-        print(f"✗ Portfolio summary failed: {e}")
+    except (httpx.HTTPError, AssertionError, ValueError) as error:
+        print(f"✗ Portfolio summary failed: {error}")
         metrics.record_failure()
         return False
 
@@ -207,7 +209,7 @@ async def test_rapid_order_stream(metrics: PerformanceMetrics):
             if (i + 1) % 10 == 0:
                 print(f"  Submitted {i+1}/{rapid_orders} orders...")
 
-        except Exception:
+        except httpx.HTTPError:
             metrics.record_failure()
 
     success_rate = (success_count / rapid_orders) * 100
@@ -222,7 +224,7 @@ async def main():
     print("=" * 70)
     print("HFT TRADING PLATFORM - INTEGRATION TESTS")
     print("=" * 70)
-    print(f"Start time: {datetime.now().isoformat()}")
+    print(f"Start time: {datetime.now(UTC).isoformat()}")
     print(f"Backend URL: {BASE_URL}")
 
     metrics = PerformanceMetrics()
@@ -235,7 +237,7 @@ async def main():
         results["health"] = await test_health_check()
         if not results["health"]:
             print("\n✗ Backend not healthy, stopping tests")
-            return
+            return 1
 
         results["orders"] = await test_order_placement(metrics)
         results["positions"] = await test_position_tracking(metrics)
@@ -260,7 +262,7 @@ async def main():
             print(f"  {key:35} {value}")
 
         print("\n" + "=" * 70)
-        print(f"End time: {datetime.now().isoformat()}")
+        print(f"End time: {datetime.now(UTC).isoformat()}")
         print("=" * 70)
 
         # Overall result
@@ -268,12 +270,7 @@ async def main():
         if all_passed:
             print("\n✓ ALL TESTS PASSED")
             return 0
-        else:
-            print("\n✗ SOME TESTS FAILED")
-            return 1
-
-    except Exception as e:
-        print(f"\n✗ Test execution failed: {e}")
+        print("\n✗ SOME TESTS FAILED")
         return 1
     finally:
         await CLIENT.aclose()
@@ -281,4 +278,4 @@ async def main():
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    exit(exit_code)
+    sys.exit(exit_code)

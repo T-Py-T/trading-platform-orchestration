@@ -9,7 +9,6 @@ import os
 import statistics
 import sys
 import time
-from typing import List
 
 import httpx
 
@@ -24,7 +23,7 @@ class LoadTestClient:
 
         self.orders_sent = 0
         self.orders_success = 0
-        self.latencies: List[float] = []
+        self.latencies: list[float] = []
         self.errors = 0
 
     async def run(self):
@@ -81,7 +80,7 @@ class LoadTestClient:
                         if resp.status_code in (200, 201):
                             self.orders_success += 1
 
-                    except Exception:
+                    except httpx.HTTPError:
                         self.errors += 1
 
                 # Print results for this client
@@ -117,8 +116,8 @@ class LoadTestClient:
                 }
                 print(f"JSON:{json.dumps(result)}")
 
-            except Exception as e:
-                print(f"[Client {self.client_id}] Error: {str(e)}", file=sys.stderr)
+            except (httpx.HTTPError, KeyError, ValueError) as error:
+                print(f"[Client {self.client_id}] Error: {error!s}", file=sys.stderr)
                 self.errors += 1
 
 

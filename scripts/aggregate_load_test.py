@@ -2,9 +2,9 @@
 # hft-trading-app/scripts/aggregate_load_test.py
 # Aggregate results from distributed load test
 
-import sys
 import json
 import statistics
+import sys
 
 
 def main():

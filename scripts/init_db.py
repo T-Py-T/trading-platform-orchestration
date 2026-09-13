@@ -4,17 +4,18 @@
 # Creates all tables from SQLAlchemy models
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add backend to path
 sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "..", "..", "ml-trading-app-py")
 )
 
-from sqlalchemy.ext.asyncio import create_async_engine
-from backend.database.models import Base
 from backend.config import settings
+from backend.database.models import Base
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import create_async_engine
 
 
 async def init_db():
@@ -34,8 +35,8 @@ async def init_db():
         print("✓ Database initialization complete")
         return 0
 
-    except Exception as e:
-        print(f"✗ Error initializing database: {e}")
+    except SQLAlchemyError as error:
+        print(f"✗ Error initializing database: {error}")
         import traceback
 
         traceback.print_exc()
@@ -44,4 +45,4 @@ async def init_db():
 
 if __name__ == "__main__":
     exit_code = asyncio.run(init_db())
-    exit(exit_code)
+    sys.exit(exit_code)

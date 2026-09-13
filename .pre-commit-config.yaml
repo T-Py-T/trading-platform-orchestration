@@ -1,7 +1,7 @@
 repos:
   # General file fixers
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
@@ -14,42 +14,42 @@ repos:
 
   # YAML validation
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.32.0
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: [--strict, --config-file, .pre-commit/.yamllint]
 
   # Python formatting
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 26.5.1
     hooks:
       - id: black
         language_version: python3
 
   # Python linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix]
 
   # Secrets detection
   - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
+    rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.pre-commit/.secrets.baseline']
 
   # Shell script linting
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.9.0.6
+    rev: v0.11.0.1-1
     hooks:
       - id: shellcheck
         args: [--severity=warning]
 
   # Markdown linting
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.36.0
+    rev: v0.49.1
     hooks:
       - id: markdownlint
         args: [--config, .pre-commit/.markdownlint-cli2.jsonc]

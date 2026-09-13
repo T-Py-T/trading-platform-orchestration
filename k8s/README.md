@@ -18,7 +18,7 @@ export DATABASE_URL="postgres://trading_user:${POSTGRES_PASSWORD}@postgres:5432/
 ## Environments
 
 | Setting | Dev | Production |
-|---------|-----|-----------|
+| ------- | --- | ---------- |
 | Backend Replicas | 1 | 4 |
 | Log Level | DEBUG | INFO |
 | Memory | 128Mi | 512Mi |
