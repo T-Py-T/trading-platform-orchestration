@@ -1,105 +1,83 @@
-# Development & Release Guide
+# Local integration guide
 
-## Quick Start
+This guide validates the public orchestration files and, when the component
+repositories are available, starts the complete trading-platform stack.
 
-```bash
-pip install pre-commit
-pre-commit install
-git checkout dev
-git checkout -b feature/my-feature
-# Make changes, commit, push, create PR
-```
+## Requirements
 
-## Branch Strategy
+- Python 3.11 or newer
+- Docker with Compose v2
+- `kubectl` for rendering Kubernetes overlays
+- sibling checkouts of `ml-trading-app-go` and `ml-trading-app-cpp` for a full
+  Compose build
 
-- **dev**: Development, merges from features
-- **staging**: Release candidate, runs E2E tests, auto-assigns version
-- **main**: Production, auto-creates GitHub Release
-
-## Workflow
-
-1. Create feature branch from `dev`
-2. Commit with conventional messages (`feat:`, `fix:`, etc.)
-3. Push and create PR
-4. Pre-commit hooks run automatically (format, lint, secrets)
-5. GitHub Actions run tests
-6. Merge after approval
-7. Repeat until ready for release
-
-## Releasing
+## Validate the public repository
 
 ```bash
-# When dev is stable
-git checkout dev
-git checkout -b release/prepare
-git push origin release/prepare
-
-# Create PR: release/prepare → staging
-# GitHub Actions: runs E2E tests
-# If pass: auto-generates release notes, assigns version
-# Merge to staging
-
-# Create PR: staging → main
-# Merge to main
-# Auto-creates GitHub Release with version tag
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt pre-commit
+python -m pytest tests/test_gitroll_manifests.py -v
+pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files
 ```
 
-## Commit Message Format
+Preview both Kubernetes overlays without contacting a cluster:
 
-```
-type(scope): description
-
-feat:     New feature (bumps MINOR)
-fix:      Bug fix (bumps PATCH)
-feat!:    Breaking change (bumps MAJOR)
-```
-
-Examples:
-- `feat: add portfolio tracking` → v1.1.0
-- `fix: correct order matching` → v1.0.1
-- `feat!: change API port` → v2.0.0
-
-## Pre-commit Hooks
-
-Run automatically on every commit:
-- End-of-file fixer
-- Trailing whitespace
-- YAML validation
-- Python formatting (black)
-- Python linting (ruff)
-- Secrets detection
-- Shell linting
-- Markdown linting
-
-Manual run: `pre-commit run --all-files`
-
-## Testing
-
-See the README [migration notes](../README.md#migration-notes) for the current
-test ownership and pytest discovery contract.
-
-## Protection Rules
-
-**dev, staging, main**: Require PR review, status checks pass, no force push
-
-## Troubleshooting
-
-**Pre-commit fails?**
 ```bash
-pre-commit run --all-files  # See what failed
-black .                      # Fix formatting
-ruff check . --fix          # Fix linting
-git add . && git commit     # Try again
+DRY_RUN=true ./k8s/deploy.sh dev
+DRY_RUN=true ./k8s/deploy.sh production
 ```
 
-**Can't merge PR?**
-- Check GitHub Actions logs (Checks tab)
-- Fix issues and push fixes
-- PR auto-updates
+## Arrange the full workspace
 
-**Wrong branch?**
+The Compose file builds the API and engine from sibling directories:
+
+```text
+workspace/
+├── trading-platform-orchestration/
+├── ml-trading-app-go/
+└── ml-trading-app-cpp/
+```
+
+Confirm that `docker compose config` resolves both build contexts before
+starting services.
+
+## Start the stack
+
+Create ephemeral development credentials in the current shell:
+
 ```bash
-git branch -D wrong-branch
-git checkout -b correct-branch
-git push origin correct-branch
+export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export JWT_SECRET="$(openssl rand -hex 32)"
+export DATABASE_URL="postgres://trading_user:${POSTGRES_PASSWORD}@postgres:5432/trading_db?sslmode=disable"
+
+docker compose config
+docker compose up -d --build
+docker compose ps
+curl http://localhost:8000/healthz
 ```
+
+Do not commit these values or place production credentials in a repository
+`.env` file.
+
+## Inspect and stop
+
+```bash
+docker compose logs --tail=200
+docker compose down
+```
+
+`docker compose down` preserves the PostgreSQL volume. Add `--volumes` only
+when you intentionally want to delete local database state.
+
+## Kubernetes preview
+
+The deployment helper requires credentials only for a real apply. Use dry-run
+mode first:
+
+```bash
+DRY_RUN=true ./k8s/deploy.sh production
+```
+
+See [`k8s/README.md`](../k8s/README.md) for image, secret, deployment, and
+cleanup details.
