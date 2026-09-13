@@ -47,7 +47,7 @@ scripts/                  # setup and load-generation helpers
 docs/
 ├── QUICKSTART.md         # development workflow
 ├── RELEASE.md            # release process
-└── PERFORMANCE.md        # benchmark requirements and result format
+└── PERFORMANCE.md        # load-test procedure and result format
 ```
 
 ## Validate the public configuration
