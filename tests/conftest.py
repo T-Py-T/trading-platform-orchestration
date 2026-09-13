@@ -2,10 +2,11 @@
 # Pytest configuration and fixtures for integration tests
 # Provides: gRPC client, API client, test data fixtures
 
-import pytest
 import asyncio
-from httpx import AsyncClient
+
 import grpc
+import pytest
+from httpx import AsyncClient
 
 # Configuration
 GRPC_TARGET = "localhost:50051"
