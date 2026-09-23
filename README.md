@@ -1,5 +1,7 @@
 # Trading Platform Orchestration
 
+![Test Suite](https://github.com/T-Py-T/trading-platform-orchestration/actions/workflows/test.yml/badge.svg?branch=main)
+
 Compose and Kubernetes orchestration for a componentized trading platform. The
 repository defines how the Go API/TUI, C++ matching engine, and PostgreSQL
 services are configured, connected, health-checked, and deployed.
