@@ -11,6 +11,11 @@ repositories. This repository contains their integration contract: image and
 build references, ports, environment variables, probes, resource limits,
 deployment overlays, manifest tests, and operator notes.
 
+For a compact hireability index, suggested GitHub topics, and policy pointers
+without duplicating this page, see
+[`docs/HIREABILITY.md`](docs/HIREABILITY.md) (cross-links:
+[SECURITY.md](SECURITY.md), [LICENSE](LICENSE)).
+
 ## Architecture
 
 ```text
@@ -47,6 +52,7 @@ k8s/
 tests/                    # manifest and configuration regressions
 scripts/                  # setup and load-generation helpers
 docs/
+├── HIREABILITY.md        # lean reviewer / topics index (not a READY gate)
 ├── QUICKSTART.md         # development workflow
 ├── RELEASE.md            # release process
 └── PERFORMANCE.md        # load-test procedure and result format
@@ -159,6 +165,14 @@ python -m pytest tests/test_gitroll_manifests.py -v
 
 `tests/integration_test.py` targets an older Python API and is excluded by
 `pytest.ini`. The active checks are in `tests/test_gitroll_manifests.py`.
+
+## Further reading
+
+- [Hireability and discoverability](docs/HIREABILITY.md) — thin reviewer index;
+  not a `READY` gate or scorecard.
+- [Security](SECURITY.md) — private vulnerability reporting for this repository.
+- Operator docs: [Quickstart](docs/QUICKSTART.md), [Release](docs/RELEASE.md),
+  [Performance](docs/PERFORMANCE.md).
 
 ## License
 
