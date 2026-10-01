@@ -1,10 +1,29 @@
 # Security policy
 
-## Supported code
+**Tip cite:** `bf79b4aa` (Ship 262 README hireability lean on `main`); Steward resolve
+pending when the opening pull request for **Ship 266** merges. **tip≠READY** — no
+release gate, score, certification, or live-trading authorization is implied.
 
-The current `main` branch is the only supported version. This repository is a
-local orchestration lab for composing and deploying the trading platform stack;
-it does not operate a hosted brokerage or production trading service.
+Lean vulnerability reporting for this orchestration lab. Related docs:
+[README.md](README.md), [`docs/HIREABILITY.md`](docs/HIREABILITY.md), [LICENSE](LICENSE).
+
+## Scope
+
+Supported version: current `main` only. This repository defines local Compose and
+Kubernetes wiring for a componentized trading stack; it does not operate a hosted
+brokerage or production trading service.
+
+In scope: secrets in git, manifest/deploy misconfiguration in this tree, and
+orchestration scripts under `scripts/`. Out of scope: defects in private Go/C++
+component repos or third-party images—report those to their maintainers unless
+the issue is how this repository references or configures them.
+
+Runtime secrets and deployment credentials belong outside the repository. Never
+commit secret values, decrypted configuration, private backups, or unredacted
+load-test exports. `docker-compose.yml`, `k8s/`, and `scripts/` describe wiring;
+they do not certify component implementations as secure. Manifest tests,
+pre-commit checks, and dry-run deploy commands validate public configuration here
+only—not a cluster, brokerage integration, or generated change.
 
 ## Report a vulnerability
 
@@ -16,8 +35,8 @@ vulnerability reporting.
 
 Include the affected commit, the vulnerable path, the impact, and the smallest
 reproduction that does not expose sensitive data. You can expect an
-acknowledgment within seven days. A fix schedule depends on the severity and
-the affected component.
+acknowledgment within seven days. A fix schedule depends on severity and the
+affected component.
 
 ## Keep reports and evidence safe
 
@@ -29,16 +48,7 @@ the affected component.
   when reproducing orchestration defects.
 - Treat captured third-party output under its original license and terms.
 
-## Repository boundary
+## Reversibility
 
-Runtime secrets and deployment credentials belong outside the repository. Never
-commit a secret value, decrypted configuration, private backup, or unredacted
-load-test export.
-
-`docker-compose.yml`, `k8s/`, and the helper scripts in `scripts/` define how
-components are wired on your machine or cluster. They do not certify the Go
-API/TUI, C++ matching engine, PostgreSQL, or any third-party image as secure.
-
-Manifest tests, pre-commit checks, and dry-run deploy commands validate the
-public configuration in this repository. Local checks do not certify a cluster,
-brokerage integration, or generated change as secure.
+Delete or trim this file and any README or hireability cross-links that point to
+it to revert the discoverability lean without touching images, manifests, or CI.
