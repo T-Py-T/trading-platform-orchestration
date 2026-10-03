@@ -1,11 +1,10 @@
 # Security policy
 
-**Tip cite:** `bf79b4aa` (Ship 262 README hireability lean on `main`); Steward resolve
-pending when the opening pull request for **Ship 266** merges. **tip≠READY** — no
-release gate, score, certification, or live-trading authorization is implied.
+**Tip cite:** `bf79b4aa` (Ship 262 README lean on `main`); Steward resolve
+pending when the opening pull request for **Ship 266** merges.
 
 Lean vulnerability reporting for this orchestration lab. Related docs:
-[README.md](README.md), [`docs/HIREABILITY.md`](docs/HIREABILITY.md), [LICENSE](LICENSE).
+[README.md](README.md), [LICENSE](LICENSE).
 
 ## Scope
 
@@ -50,5 +49,5 @@ affected component.
 
 ## Reversibility
 
-Delete or trim this file and any README or hireability cross-links that point to
+Delete or trim this file and any README cross-links that point to
 it to revert the discoverability lean without touching images, manifests, or CI.
