@@ -19,8 +19,10 @@ their binaries and application behavior.
 python -m pytest tests/test_gitroll_manifests.py -v
 pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files
 docker compose config
-DRY_RUN=true ./k8s/deploy.sh dev
-DRY_RUN=true ./k8s/deploy.sh production
+cd k8s
+DRY_RUN=true ./deploy.sh dev
+DRY_RUN=true ./deploy.sh production
+cd ..
 ```
 
 When all component source is available, build the Compose stack and verify the
