@@ -24,8 +24,10 @@ pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files
 Preview both Kubernetes overlays without contacting a cluster:
 
 ```bash
-DRY_RUN=true ./k8s/deploy.sh dev
-DRY_RUN=true ./k8s/deploy.sh production
+cd k8s
+DRY_RUN=true ./deploy.sh dev
+DRY_RUN=true ./deploy.sh production
+cd ..
 ```
 
 ## Arrange the full workspace
@@ -76,7 +78,8 @@ The deployment helper requires credentials only for a real apply. Use dry-run
 mode first:
 
 ```bash
-DRY_RUN=true ./k8s/deploy.sh production
+cd k8s
+DRY_RUN=true ./deploy.sh production
 ```
 
 See [`k8s/README.md`](../k8s/README.md) for image, secret, deployment, and
