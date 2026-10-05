@@ -2,340 +2,181 @@
 
 ![Test Suite](https://github.com/T-Py-T/trading-platform-orchestration/actions/workflows/test.yml/badge.svg?branch=main)
 
-**The deployment contract for a componentized trading platform: Compose wiring,
-Kubernetes manifests, a dry-run deploy script, and tests that keep the two in
-agreement.**
+**The public contract for how a split trading stack is wired: ports, probes, secrets, and the tests that keep Compose and Kubernetes from drifting apart.**
 
-A trading platform split across several language runtimes has to agree on the
-boring things — which port the API listens on, which address the matching engine
-answers on, which probe decides a replica is dead, how much memory each
-container may take, and where the credentials come from. This repository is
-where that agreement is written down, versioned, and tested.
-
-## What is in this repository
-
-- `docker-compose.yml` — the local multi-service composition: service graph,
-  startup ordering, health checks, published ports, and named volumes.
-- `k8s/` — Kubernetes bases plus `dev` and `production` Kustomize overlays, and
-  `deploy.sh`, which renders an overlay locally before it touches a cluster.
-- `tests/test_gitroll_manifests.py` — six regression checks over the manifests:
-  service-account tokens stay off and ephemeral storage is bounded, images are
-  pinned to auditable tags, no credential value is committed, the ingress port
-  matches the listener in `nginx.conf`, the API liveness probe is not the
-  degrading health endpoint, and `DRY_RUN=true` never contacts a cluster.
-- `scripts/` — database bootstrap, image build, and load-generation helpers.
-- `docs/` — operator guides for local integration, releases, and load testing.
-- `.pre-commit/` and `.github/workflows/test.yml` — the lint and test gate that
-  runs on every pull request.
-
-## What is not in this repository
-
-- The Go API and TUI source.
-- The C++ matching engine source.
-- The Dockerfiles those components build from, and the engine container image.
-
-Those components live in separate repositories that are **not public**. You
-cannot clone a runnable trading stack from here, and nothing below will ask you
-to try. What you can do is read, validate, and change the contract that would
-wire such a stack together.
+The Go API, the C++ matching engine, and their Dockerfiles are not in this repository. You cannot clone a running exchange from here. What you can clone is the agreement those processes would have to share, and you can fail a pull request when that agreement breaks.
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ THIS REPOSITORY                                              │
-│ Compose file · Kubernetes bases and overlays · deploy script │
-│ ports · env vars · probes · resource limits · manifest tests │
-└───────────────┬──────────────────────────┬───────────────────┘
-                │ configures               │ configures
-        HTTP / WebSocket                 gRPC
-                │                          │
-      ┌─────────▼──────────┐    ┌──────────▼──────────┐
-      │ Go API and TUI     │    │ C++ matching engine │
-      │ not in this repo   │    │ not in this repo    │
-      └─────────┬──────────┘    └─────────────────────┘
-                │ configures
-      ┌─────────▼──────────┐
-      │ PostgreSQL         │
-      │ official image     │
-      └────────────────────┘
+this repository
+  docker-compose.yml
+  k8s bases and dev/production overlays
+  deploy.sh (render first, apply only if you insist)
+  tests that read the YAML
+        | configures                         | configures
+        v                                    v
+  HTTP and WebSocket API              gRPC matching engine
+  not published here                  not published here
+        |
+        v
+  PostgreSQL (official image, pin is in the Compose file)
 ```
 
-## Why it exists
+No UI mock, no screenshot, and no performance figure belongs on this page. None are in the tree.
 
-When each component owns its own repository, the integration surface has no
-natural home. It ends up duplicated in a wiki, in someone's shell history, and
-in three slightly different Compose files. Drift is invisible until a deploy
-fails.
+## Why try it
 
-Keeping the contract in one repository makes it reviewable. A change to a port,
-a probe, a resource limit, or a credential path arrives as a pull request with
-a diff, and the manifest tests fail if it breaks a rule the platform depends on.
-Several of those rules exist because a static analysis pass found the opposite
-committed here first; `docs/gitroll-triage.md` is the ledger of what was found
-and what was changed.
+When each runtime lives in its own repository, the integration surface hides in a wiki and three Compose files. A port change looks local until a probe or an ingress still points at the old one.
 
-## Getting started
+This repo makes that surface a diff. A manifest test fails if a service-account token is mounted, an image tag is floating, a credential value is committed, the ingress port disagrees with the nginx listener, or the API liveness probe is pointed at an endpoint that is supposed to degrade. `docs/gitroll-triage.md` is the ledger of findings that produced several of those rules.
 
-Everything in this section runs against a fresh clone of this repository alone.
-No cluster, no credentials, no sibling checkouts.
+## Worked example
 
-### Requirements
+The interesting rule is a probe split, and you can watch the test defend it without a cluster.
 
-- Python 3.11 or newer
-- The Docker CLI with Compose v2, for the configuration check only
-- `kubectl`, for rendering the overlays with its built-in Kustomize
+The API's `/healthz` is allowed to return `503` when the write-behind outbox is too full or too stale. That is a readiness signal. It is a bad liveness signal: a busy replica would be restarted while it still holds unflushed writes. The backend manifest therefore uses a TCP liveness probe on port `8000` and keeps HTTP `/healthz` for readiness.
 
-### 1. Run the manifest tests
-
-```bash
-git clone https://github.com/T-Py-T/trading-platform-orchestration.git
-cd trading-platform-orchestration
-
+```sh
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements.txt
-
-python -m pytest tests/test_gitroll_manifests.py -v
+python -m pytest \
+  tests/test_gitroll_manifests.py::test_backend_liveness_does_not_use_degrading_health_endpoint \
+  -v
 ```
 
-Six tests, all offline. This is the test selection the `Python Tests` job runs
-on every pull request.
+That test passed. It compares the whole probe, so a "harmless" edit to the path, delay, or failure threshold fails the same way a type change does.
 
-Then run the lint gate, which is the other half of CI:
+The production overlay renders two `tcpSocket` probes (backend and engine):
 
-```bash
+```sh
+cd k8s
+kubectl kustomize overlays/production | grep -c 'tcpSocket'
+```
+
+That count was `2`.
+
+## Honest demo
+
+Everything below was run from this public tree. Nothing below starts a stack.
+
+| Command | Result here |
+| --- | --- |
+| `python -m pytest tests/test_gitroll_manifests.py -v` | 6 passed |
+| `pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files` | passed (whitespace, YAML, yamllint, black, ruff, detect-secrets, shellcheck, markdownlint) |
+| `DRY_RUN=true ./deploy.sh dev` and `production`, from `k8s/` | rendered manifests, did not contact a cluster for apply |
+| `kubectl kustomize overlays/production` | rendered; `tcpSocket` count 2 |
+| `docker compose config` | **not run successfully.** Docker Engine 29.8.2 on this machine has no Compose plugin (`docker: unknown command: docker compose`). The plugin was not installed for this page. |
+| `podman-compose config`, with placeholder secrets | rendered the graph and stopped. It did not build or start containers. |
+
+`podman-compose config` is not a second supported entrypoint. It was a read-only check after the documented Docker Compose v2 command could not start. The rendered build contexts are sibling directories named in `docker-compose.yml`. Those directories are not part of this repository. This page does not link them and does not describe their internals.
+
+Not run, on purpose: `docker compose up`, `make up`, `make test`, `scripts/build-docker-images.sh`, and `./deploy.sh` without `DRY_RUN=true`. Those need the unpublished components or a cluster.
+
+**No throughput, latency, fill, or profit-and-loss number is published here.** Replica counts and memory limits in the overlays are configuration, not measurements. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) describes how a load run would have to be recorded. It does not contain a result.
+
+## Getting started
+
+Python 3.11 or newer. `kubectl` for `kustomize` and `deploy.sh`. Docker Compose v2 only if `docker compose version` already works. No cluster credentials.
+
+```sh
+git clone https://github.com/T-Py-T/trading-platform-orchestration.git
+cd trading-platform-orchestration
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest tests/test_gitroll_manifests.py -v
 python -m pip install pre-commit
 pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files
 ```
 
-### 2. Check the Compose wiring
+Those six tests are the `Python Tests` job. They stay offline. `tests/integration_test.py` targets a historical Python API that is not in this platform. `pytest.ini` collects `test_*.py` only, so that file is not part of the run.
 
-`docker compose config` resolves variables and validates the service graph
-without building or starting anything. The three secrets are declared required,
-so the command needs values present in the environment — any placeholder is
-fine, because `config` only interpolates them:
+Compose, when the plugin exists, interpolates secrets and validates the graph. It does not build:
 
-```bash
+```sh
 export POSTGRES_PASSWORD=placeholder
 export JWT_SECRET=placeholder
 export DATABASE_URL="postgres://trading_user:${POSTGRES_PASSWORD}@postgres:5432/trading_db?sslmode=disable"
-
 docker compose config
 ```
 
-The rendered output shows the absolute build-context paths Compose would use.
-Those paths point at sibling directories that are not part of this repository,
-which is exactly what the next section is about.
+Any placeholder satisfies interpolation. If the command is `unknown command: docker compose`, stop. Do not switch to `compose up`.
 
-### 3. Preview the Kubernetes overlays
+Preview both overlays from `k8s/`. Dry-run renders with `kubectl kustomize` and returns before any apply:
 
-`deploy.sh` renders with `kubectl kustomize` first and only reaches for a
-cluster afterwards. In dry-run mode it stops after rendering, so it needs
-neither credentials nor a reachable cluster. Run it from `k8s/`, because the
-overlay paths it builds are relative to the working directory:
-
-```bash
+```sh
 cd k8s
 DRY_RUN=true ./deploy.sh dev
 DRY_RUN=true ./deploy.sh production
 ```
 
-### Where getting started stops
-
-`docker compose up`, `make up`, `make test`, and `./deploy.sh` without
-`DRY_RUN=true` all need the component repositories, and those are not public.
-Compose builds the API and the engine from sibling source directories, and the
-Kubernetes manifests pin the engine to an image tag that only exists once you
-have built it from the C++ component source. There is no public substitute, so
-if you are reading this as a stranger to the project, those paths are closed —
-stop at step 3.
-
-[`docs/QUICKSTART.md`](docs/QUICKSTART.md) covers the same three public steps in
-more detail. Its later sections — arranging the sibling workspace, starting the
-stack, and curling the health endpoint — assume those non-public checkouts and
-will not work without them.
-
-## A worked example: the probe that must not be a health check
-
-The clearest thing this repository contributes is not configuration, it is a
-decision that configuration alone would not survive.
-
-The Go API serves `/healthz`, and that endpoint deliberately degrades: it
-returns `503` when the write-behind outbox passes half capacity or goes stale.
-That is useful information for a load balancer and dangerous information for a
-liveness probe. Point liveness at it and a burst of traffic makes Kubernetes
-restart exactly the replicas that are working hardest — the ones holding the
-most un-flushed writes in that in-memory outbox.
-
-So the manifest splits the two probes. Liveness asks a cheaper question — is
-anything listening on the port:
-
-```yaml
-livenessProbe:
-  tcpSocket:
-    port: 8000
-  initialDelaySeconds: 15
-  periodSeconds: 10
-  failureThreshold: 5
-readinessProbe:
-  httpGet:
-    path: /healthz
-    port: 8000
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  failureThreshold: 10
-```
-
-A saturated replica now leaves the service rotation and stays alive long enough
-to drain. A dead one still gets restarted.
-
-Nothing in a YAML file explains that, and a future edit that "simplifies" the
-two probes into one looks harmless in review. So the reasoning is pinned by a
-test instead:
-
-```bash
-python -m pytest tests/test_gitroll_manifests.py::test_backend_liveness_does_not_use_degrading_health_endpoint -v
-```
-
-```text
-tests/test_gitroll_manifests.py::test_backend_liveness_does_not_use_degrading_health_endpoint PASSED [100%]
-
-============================== 1 passed in 0.02s ===============================
-```
-
-The assertion compares the whole probe, not just its type, so changing the
-endpoint, the delay, or the failure threshold all fail loudly. The engine makes
-the same choice, which is why the rendered production overlay carries exactly
-two TCP liveness probes:
-
-```bash
-cd k8s
-kubectl kustomize overlays/production | grep -c 'tcpSocket'
-```
-
-```text
-2
-```
+[`docs/QUICKSTART.md`](docs/QUICKSTART.md) repeats these public steps. Later sections of that guide assume unpublished sibling checkouts. They will not work from this tree alone. Stop at the dry run.
 
 ## Configuration reference
 
-### Runtime inputs
-
-Secrets are required inputs with no defaults, in both Compose and Kubernetes.
-Compose fails fast when they are unset; `deploy.sh` refuses a non-preview
-deployment and creates the Secret objects from the environment immediately
-before applying. No Secret manifest is committed, and a manifest test enforces
-that.
+Secrets are required in Compose and in Kubernetes. Compose fails when they are unset. `deploy.sh` refuses a non-preview deploy until they are present, and it creates Secret objects from the environment at apply time. No Secret manifest is committed. A test enforces that.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | required | PostgreSQL password |
-| `DATABASE_URL` | required | API database connection URL |
-| `JWT_SECRET` | required | Application signing secret |
-| `ENGINE_ADDR` | `hft-engine:50051` | Matching-engine gRPC endpoint |
-| `ENGINE_ENABLED` | `true` | Enable the engine client |
-| `WRITE_BEHIND` | `true` | Enable buffered database writes |
-| `OUTBOX_BUFFER` | `10000` | Outbox channel capacity |
-| `OUTBOX_BATCH` | `50` | Maximum write batch size |
-| `OUTBOX_FLUSH` | `50ms` | Partial-batch flush interval |
-| `OUTBOX_LAG_THRESHOLD` | `5s` | Health threshold for outbox lag |
-| `LOG_LEVEL` | `info` | Logging level |
-| `LOG_FORMAT` | `json` | Logging format |
-| `APP_ENV` | `production` | Runtime environment selector |
+| `DATABASE_URL` | required | API database URL |
+| `JWT_SECRET` | required | Signing secret |
+| `ENGINE_ADDR` | `hft-engine:50051` | Matching-engine gRPC address |
+| `ENGINE_ENABLED` | `true` | Engine client toggle |
+| `WRITE_BEHIND` | `true` | Buffered database writes |
+| `OUTBOX_BUFFER` | `10000` | Outbox capacity |
+| `OUTBOX_BATCH` | `50` | Max write batch |
+| `OUTBOX_FLUSH` | `50ms` | Partial-batch flush |
+| `OUTBOX_LAG_THRESHOLD` | `5s` | Outbox lag health threshold |
+| `LOG_LEVEL` | `info` | Log level |
+| `LOG_FORMAT` | `json` | Log format |
+| `APP_ENV` | `production` | Environment selector |
 
-### Ports
-
-| Service | Port | Protocol | Defined in |
+| Service | Port | Protocol | Where |
 | --- | --- | --- | --- |
 | Backend API | `8000` | HTTP and WebSocket | Compose and Kubernetes |
 | Matching engine | `50051` | gRPC | Compose and Kubernetes |
 | Matching engine | `9001` | UDP | Kubernetes only |
 | PostgreSQL | `5432` | TCP | Compose and Kubernetes |
-| Nginx ingress | `80` and `8080` | TCP, to listener `8080` | Kubernetes only |
+| Nginx ingress | `80` and `8080` | TCP, listener `8080` | Kubernetes only |
 
-### Environment differences
-
-| Setting | `dev` overlay | `production` overlay |
+| Setting | `dev` | `production` |
 | --- | --- | --- |
 | Backend replicas | 1 | 4 |
-| Backend memory limit | 128Mi | 512Mi |
-| Backend CPU limit | 250m | 1000m |
-| Engine memory limit | 512Mi | 1Gi |
+| Backend memory | 128Mi | 512Mi |
+| Backend CPU | 250m | 1000m |
+| Engine memory | 512Mi | 1Gi |
 | Engine image tag | `dev` | `2a722ff` |
-| Image pull policy | `Never`, local images | `IfNotPresent` |
+| Image pull | `Never` | `IfNotPresent` |
 | Prometheus annotations | no | yes |
 
-Both overlays also generate an `hft-config` ConfigMap carrying a per-environment
-log level. No workload references it yet — the base kustomization marks that
-generator as reserved for future use, and the API reads its settings from
-`backend-config` instead. Render an overlay if you want to confirm which
-ConfigMap a container actually consumes.
-
-## Repository layout
+Both overlays also generate an `hft-config` ConfigMap. No workload references it yet. The API reads `backend-config`. Render an overlay to see which ConfigMap a container actually mounts.
 
 ```text
-docker-compose.yml           # local multi-service composition
-k8s/
-├── base/                    # namespace, postgres, engine, backend, nginx
-├── overlays/dev/            # 1 backend replica, local image tags
-├── overlays/production/     # 4 backend replicas, pinned release tags
-└── deploy.sh                # render, then optionally apply
-tests/
-├── test_gitroll_manifests.py  # active manifest regressions
-└── integration_test.py        # legacy, see note below
-scripts/                     # database bootstrap, image build, load generators
-docs/
-├── QUICKSTART.md            # local integration guide
-├── RELEASE.md               # release checklist
-├── PERFORMANCE.md           # load-test procedure and result format
-└── gitroll-triage.md        # static-analysis findings and dispositions
+docker-compose.yml
+k8s/base/                  namespace, postgres, engine, backend, nginx
+k8s/overlays/dev/          one backend replica, local tags
+k8s/overlays/production/   four backend replicas, pinned tags
+k8s/deploy.sh              render, then optionally apply
+tests/test_gitroll_manifests.py
+scripts/                   database bootstrap, image build, load generators
+docs/QUICKSTART.md
+docs/RELEASE.md
+docs/PERFORMANCE.md
+docs/gitroll-triage.md
 ```
-
-`tests/integration_test.py` targets a historical Python API that no longer
-exists in the platform. `pytest.ini` collects only `test_*.py`, so it is not
-discovered; the active checks are the ones in `tests/test_gitroll_manifests.py`.
-
-## Performance
-
-**No benchmark result is retained in this repository.** There are no published
-throughput, latency, fill, or profit-and-loss figures here, and the resource
-limits and replica counts in the overlays are configuration choices, not
-measurements. Treat any number in the manifests as a target, not a result.
-
-[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) describes the load-generation
-helpers in `scripts/` and what a run would have to record to be worth
-publishing. Running them needs a live stack, which needs the non-public
-components.
 
 ## Contributing
 
-Changes are welcome on the public contract — the Compose file, the manifests,
-the overlays, the tests, the scripts, and the docs.
+Changes to the Compose file, manifests, overlays, tests, scripts, and docs are in scope. Behavior that lives only in the unpublished Go or C++ trees cannot be fixed from here. What can be fixed here is how this repo points at them.
 
 1. Branch from `main`.
-2. Make the change, and add or update a test in
-   `tests/test_gitroll_manifests.py` when it encodes a rule that should not
-   silently regress.
-3. Run both CI gates locally:
+2. If the change is a rule that must not regress, extend `tests/test_gitroll_manifests.py`.
+3. Run `python -m pytest tests/test_gitroll_manifests.py -v` and `pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files`.
+4. Open a pull request against `main`.
 
-   ```bash
-   python -m pytest tests/test_gitroll_manifests.py -v
-   pre-commit run --config .pre-commit/.pre-commit-config.yaml --all-files
-   ```
-
-4. Open a pull request against `main` and fill in the template.
-
-Two things to know before you file an issue. Behavior that belongs to the Go or
-C++ components cannot be fixed from here; what can be fixed here is how this
-repository references and configures them. And vulnerabilities should not go in
-a public issue — [SECURITY.md](SECURITY.md) has the private reporting path and
-the scope boundary.
-
-[`docs/RELEASE.md`](docs/RELEASE.md) is the checklist for publishing an
-orchestration revision. This repository does not publish releases or deploy an
-environment automatically.
+Vulnerability reports do not belong in a public issue. [SECURITY.md](SECURITY.md) is the private path and the scope boundary. [`docs/RELEASE.md`](docs/RELEASE.md) is the checklist for an orchestration revision. This repository does not publish a release or deploy an environment by itself.
 
 ## License
 
-The orchestration files, tests, scripts, and documentation here are released
-under the [MIT License](LICENSE). The component repositories are separate works
-and are not covered by it.
+Orchestration files, tests, scripts, and documentation in this repository are [MIT](LICENSE). Other component repositories are separate works and are not covered by this license.
