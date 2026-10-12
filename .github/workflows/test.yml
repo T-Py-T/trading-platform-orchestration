@@ -47,6 +47,8 @@ jobs:
       - name: Dependency audit
         run: pip-audit -r requirements.txt
       - name: Validate Compose file
-        run: docker compose -f docker-compose.yml config --quiet
+        run: |
+          docker compose --env-file tests/fixtures/compose-ci.env \
+            -f docker-compose.yml config --quiet
       - name: Run Python tests
         run: python -m pytest tests/ -v --tb=short
