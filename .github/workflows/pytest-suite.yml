@@ -22,7 +22,9 @@ jobs:
           python-version: "3.12"
       - name: Install Kustomize
         run: |
-          curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.6.0/kustomize_v5.6.0_linux_amd64.tar.gz" | tar xz
+          version=v5.6.0
+          base="https://github.com/kubernetes-sigs/kustomize/releases/download"
+          curl -sL "${base}/kustomize%2F${version}/kustomize_${version}_linux_amd64.tar.gz" | tar xz
           sudo mv kustomize /usr/local/bin/kustomize
           kustomize version
       - name: Install dependencies

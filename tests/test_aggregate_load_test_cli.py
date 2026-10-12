@@ -42,8 +42,12 @@ def test_aggregate_reports_combined_throughput() -> None:
     """Multiple client JSON lines should roll up into a single throughput total."""
     stdin = "".join(
         [
-            sample_client_payload(0, orders_sent=100, orders_success=95, throughput=4000, avg_latency=2.0),
-            sample_client_payload(1, orders_sent=120, orders_success=110, throughput=1500, avg_latency=2.5),
+            sample_client_payload(
+                0, orders_sent=100, orders_success=95, throughput=4000, avg_latency=2.0
+            ),
+            sample_client_payload(
+                1, orders_sent=120, orders_success=110, throughput=1500, avg_latency=2.5
+            ),
         ]
     )
     result = run_aggregate(stdin)
@@ -59,9 +63,8 @@ def test_aggregate_reports_combined_throughput() -> None:
 
 def test_aggregate_skips_malformed_json_lines() -> None:
     """Invalid JSON: lines should not abort aggregation of valid client output."""
-    stdin = (
-        "JSON:{not valid}\n"
-        + sample_client_payload(3, orders_sent=10, orders_success=10, throughput=12000, avg_latency=1.0)
+    stdin = "JSON:{not valid}\n" + sample_client_payload(
+        3, orders_sent=10, orders_success=10, throughput=12000, avg_latency=1.0
     )
     result = run_aggregate(stdin)
 

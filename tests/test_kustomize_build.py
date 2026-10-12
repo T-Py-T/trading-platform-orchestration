@@ -56,7 +56,9 @@ def workload_documents(relative_path: str) -> list[dict]:
 @pytest.mark.parametrize("relative_path", OVERLAYS)
 def test_kustomize_build_includes_core_workloads(relative_path: str) -> None:
     """Every overlay should render backend, engine, and Postgres workloads."""
-    names = {document["metadata"]["name"] for document in workload_documents(relative_path)}
+    names = {
+        document["metadata"]["name"] for document in workload_documents(relative_path)
+    }
     assert {"hft-backend", "hft-engine", "postgres"}.issubset(names)
 
 
@@ -78,5 +80,7 @@ def test_dev_render_uses_local_image_pull_policy() -> None:
             for document in workload_documents("k8s/overlays/dev")
             if document["metadata"]["name"] == workload_name
         )
-        policy = workload["spec"]["template"]["spec"]["containers"][0]["imagePullPolicy"]
+        policy = workload["spec"]["template"]["spec"]["containers"][0][
+            "imagePullPolicy"
+        ]
         assert policy == "Never"

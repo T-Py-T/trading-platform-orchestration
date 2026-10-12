@@ -67,9 +67,7 @@ def test_backend_points_at_engine_grpc_service() -> None:
 
 def test_engine_exposes_grpc_and_udp_ports() -> None:
     """The trading engine must publish both gRPC and UDP listener ports."""
-    service_ports = {
-        port["name"]: port for port in engine_service()["spec"]["ports"]
-    }
+    service_ports = {port["name"]: port for port in engine_service()["spec"]["ports"]}
     container_ports = {
         port["name"]: port
         for port in engine_deployment()["spec"]["template"]["spec"]["containers"][0][
@@ -88,7 +86,9 @@ def test_production_overlay_scales_backend_replicas() -> None:
     import yaml
 
     overlay = yaml.safe_load(
-        (ROOT / "k8s/overlays/production/kustomization.yaml").read_text(encoding="utf-8")
+        (ROOT / "k8s/overlays/production/kustomization.yaml").read_text(
+            encoding="utf-8"
+        )
     )
     replica_counts = {
         entry["name"]: entry["count"] for entry in overlay.get("replicas", [])
