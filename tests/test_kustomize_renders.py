@@ -8,14 +8,22 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-POSTGRES_IMAGE = (
-    "postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2"
-)
 KUSTOMIZE_PATHS = (
     "k8s/base",
     "k8s/overlays/dev",
     "k8s/overlays/production",
 )
+
+
+def postgres_image_from_base_manifest() -> str:
+    """Return the digest-pinned Postgres image from the base StatefulSet."""
+    with (ROOT / "k8s/base/postgres.yaml").open(encoding="utf-8") as manifest:
+        for document in yaml.safe_load_all(manifest):
+            if document.get("kind") == "StatefulSet":
+                return document["spec"]["template"]["spec"]["containers"][0]["image"]
+    raise AssertionError(
+        "postgres StatefulSet image not found in k8s/base/postgres.yaml"
+    )
 
 
 def kustomize_build(relative_path: str) -> list[dict]:
@@ -31,11 +39,7 @@ def kustomize_build(relative_path: str) -> list[dict]:
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    return [
-        document
-        for document in yaml.safe_load_all(result.stdout)
-        if document
-    ]
+    return [document for document in yaml.safe_load_all(result.stdout) if document]
 
 
 def container_images(relative_path: str) -> list[str]:
@@ -55,7 +59,8 @@ def container_images(relative_path: str) -> list[str]:
 @pytest.mark.parametrize("relative_path", KUSTOMIZE_PATHS)
 def test_postgres_image_stays_digest_pinned(relative_path: str) -> None:
     """Kustomize must not downgrade Postgres to an unpinned major tag."""
-    assert POSTGRES_IMAGE in container_images(relative_path)
+    expected = postgres_image_from_base_manifest()
+    assert expected in container_images(relative_path)
 
 
 def test_dev_overlay_uses_development_engine_tag() -> None:
