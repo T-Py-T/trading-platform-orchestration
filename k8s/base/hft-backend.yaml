@@ -17,9 +17,9 @@ data:
   OUTBOX_BATCH: "50"
   OUTBOX_FLUSH: "50ms"
   OUTBOX_LAG_THRESHOLD: "5s"
-  LOG_LEVEL: "info"
+  LOG_LEVEL: "debug"
   LOG_FORMAT: "json"
-  APP_ENV: "production"
+  APP_ENV: "development"
 
 ---
 apiVersion: v1

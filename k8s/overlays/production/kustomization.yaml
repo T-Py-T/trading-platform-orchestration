@@ -39,6 +39,17 @@ images:
 # Resource constraints for production
 patches:
   - target:
+      kind: ConfigMap
+      name: backend-config
+    patch: |-
+      - op: replace
+        path: /data/APP_ENV
+        value: "production"
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: "info"
+
+  - target:
       kind: Deployment
       name: hft-backend
     patch: |-
