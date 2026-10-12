@@ -1,0 +1,33 @@
+name: Full Pytest Suite
+
+'on':
+  push:
+    branches: [main]
+  pull_request:
+    branches: [dev, staging, main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: Pytest (tests/)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install Kustomize
+        run: |
+          version=v5.6.0
+          base="https://github.com/kubernetes-sigs/kustomize/releases/download"
+          curl -sL "${base}/kustomize%2F${version}/kustomize_${version}_linux_amd64.tar.gz" | tar xz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Run full pytest suite
+        run: python -m pytest tests/ -v --tb=short
