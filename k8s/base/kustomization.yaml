@@ -43,9 +43,6 @@ images:
     newTag: 2a722ff
   - name: ghcr.io/t-py-t/ml-trading-app-go-server
     newTag: v0.1.0
-  - name: postgres
-    newName: postgres
-    newTag: "16-alpine"
 
 # ConfigMap Generator (for future use)
 configMapGenerator:
