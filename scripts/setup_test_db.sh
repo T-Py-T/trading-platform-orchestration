@@ -19,10 +19,13 @@ for i in {1..30}; do
   sleep 1
 done
 
-# Create test database
+# Create test database (idempotent for repeated make setup / test runs)
 echo "Creating test database..."
-PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -U trading_user -d trading_db <<EOF
-CREATE DATABASE trading_db_test;
+PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -U trading_user -d trading_db -v ON_ERROR_STOP=1 <<'EOF'
+SELECT 'CREATE DATABASE trading_db_test'
+WHERE NOT EXISTS (
+  SELECT FROM pg_database WHERE datname = 'trading_db_test'
+)\gexec
 EOF
 
 echo "Test database setup complete!"
