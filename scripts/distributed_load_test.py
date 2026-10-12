@@ -79,6 +79,8 @@ class LoadTestClient:
 
                         if resp.status_code in (200, 201):
                             self.orders_success += 1
+                        else:
+                            self.errors += 1
 
                     except httpx.HTTPError:
                         self.errors += 1
