@@ -31,7 +31,7 @@ replicas:
 
 # Development images (local or development tags)
 images:
-  - name: hft-engine
+  - name: hft-trading-app-hft-engine
     newTag: dev
   - name: ghcr.io/t-py-t/ml-trading-app-go-server
     newTag: v0.1.0
