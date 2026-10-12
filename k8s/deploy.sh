@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -119,7 +122,7 @@ echo -e "${GREEN}  ✓ Manifests applied${NC}"
 # Step 5: Wait for deployments
 echo ""
 echo -e "${BLUE}Step 5: Waiting for deployments to be ready...${NC}"
-DEPLOYMENTS=("hft-backend" "hft-engine" "redis" "nginx-ingress")
+DEPLOYMENTS=("hft-backend" "hft-engine" "nginx-ingress")
 
 for deployment in "${DEPLOYMENTS[@]}"; do
     if kubectl get deployment $deployment -n $NAMESPACE > /dev/null 2>&1; then

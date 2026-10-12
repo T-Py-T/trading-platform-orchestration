@@ -6,14 +6,14 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CPP_ROOT="$(cd "$PROJECT_ROOT/../ml-trading-app-cpp" && pwd)"
-PY_ROOT="$(cd "$PROJECT_ROOT/../ml-trading-app-py" && pwd)"
+GO_ROOT="$(cd "$PROJECT_ROOT/../ml-trading-app-go" && pwd)"
 
 echo "================================================================"
 echo "HFT Trading Platform - Docker Build Script"
 echo "================================================================"
 echo "Project Root: $PROJECT_ROOT"
 echo "C++ Engine Root: $CPP_ROOT"
-echo "Python Backend Root: $PY_ROOT"
+echo "Go Backend Root: $GO_ROOT"
 echo ""
 
 # Parse arguments
@@ -58,18 +58,18 @@ echo "✓ C++ Engine image built successfully"
 echo ""
 
 echo "================================================================"
-echo "Step 2: Building Python Backend Docker Image"
+echo "Step 2: Building Go API Backend Docker Image"
 echo "================================================================"
 
-cd "$PY_ROOT"
+cd "$GO_ROOT"
 
-if [ ! -f "Dockerfile" ]; then
-    echo "Error: Dockerfile not found in $PY_ROOT"
+if [ ! -f "Dockerfile.server" ]; then
+    echo "Error: Dockerfile.server not found in $GO_ROOT"
     exit 1
 fi
 
-echo "Building Python backend image..."
-docker build -f Dockerfile -t hft-backend:$VERSION \
+echo "Building Go backend image..."
+docker build -f Dockerfile.server -t hft-backend:$VERSION \
     -t hft-backend:latest \
     .
 
@@ -81,18 +81,18 @@ if [ "$DOCKER_REGISTRY" != "local" ]; then
     docker push $DOCKER_REGISTRY/hft-backend:latest
 fi
 
-echo "✓ Python Backend image built successfully"
+echo "✓ Go Backend image built successfully"
 echo ""
 
 echo "================================================================"
 echo "Step 3: Building Frontend Docker Image"
 echo "================================================================"
 
-if [ -f "$PY_ROOT/Dockerfile.frontend" ]; then
+if [ -f "$GO_ROOT/Dockerfile.frontend" ]; then
     echo "Building Frontend image..."
-    docker build -f $PY_ROOT/Dockerfile.frontend -t hft-frontend:$VERSION \
+    docker build -f "$GO_ROOT/Dockerfile.frontend" -t hft-frontend:$VERSION \
         -t hft-frontend:latest \
-        $PY_ROOT
+        "$GO_ROOT"
 
     if [ "$DOCKER_REGISTRY" != "local" ]; then
         echo "Tagging and pushing frontend image..."
