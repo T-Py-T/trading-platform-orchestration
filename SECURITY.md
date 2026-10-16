@@ -1,9 +1,6 @@
 # Security policy
 
-**Tip cite:** `bf79b4aa` (Ship 262 README lean on `main`); Steward resolve
-pending when the opening pull request for **Ship 266** merges.
-
-Lean vulnerability reporting for this orchestration lab. Related docs:
+How to report a vulnerability in this orchestration repository. Related docs:
 [README.md](README.md), [LICENSE](LICENSE).
 
 ## Scope
@@ -46,8 +43,3 @@ affected component.
 - Use synthetic credentials, local fixtures, and dry-run deployment commands
   when reproducing orchestration defects.
 - Treat captured third-party output under its original license and terms.
-
-## Reversibility
-
-Delete or trim this file and any README cross-links that point to
-it to revert the discoverability lean without touching images, manifests, or CI.
