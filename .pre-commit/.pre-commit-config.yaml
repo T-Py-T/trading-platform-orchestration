@@ -40,6 +40,11 @@ repos:
       - id: detect-secrets
         args: ['--baseline', '.pre-commit/.secrets.baseline']
 
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
   # Shell script linting
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1-1
